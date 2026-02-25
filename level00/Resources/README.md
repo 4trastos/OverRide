@@ -45,9 +45,9 @@ End of assembler dump.
 0x0804849a <+6>:    sub    esp,0x20
 ```
 
-1. <+0>: Guarda en el stack en valor de EBP (cpu): [esp + 0x00] y ESP se desplaza 8 bytes hacia abajo.
+1. <+0>: Guarda en el stack en valor de EBP (cpu): [esp + 0x00] y ESP se desplaza 4 bytes hacia abajo.
 2. <+1>: Copia en  EBP en nuevo ESP para la función `main`
-3. <+3>: Alinea el stack a multiplo de 8. (los últimos 4 bytes se ponene a 0).
+3. <+3>: Alinea el stack a multiplo de 16. (los últimos 4 bytes se ponene a 0).
 4. <+6>: Desplaza (Reserva) 32 bytes (0x20) de espacio para que el compilador en el stack de `main()`, organice las varibles locales y los argumentos de las funciones que `main()` va a llamar.
 
 ### **Línas 9, 16, 21, 28, 33 y 40: (Printea enunciado por termial)**
@@ -94,7 +94,7 @@ End of assembler dump.
 (gdb) x/s 0x8048636
 0x8048636:	 "%d"
 ```
-5. <+63>: Calcula donde se encuentra la dirección que contiene `[esp+0x1c]` y lo copia en EDX. Es el buffer `stdin()` que contine el password que hemos escrito en la termninal.
+5. <+63>: `lea` (Load Effective Address). calcula la dirección de la variable local en el stack  `[esp+0x1c]` y lo copia en EDX para pasársela a `scanf()`.
 
 ### **Líneas 67, 71 y 74:**
 ```asm
@@ -105,7 +105,7 @@ End of assembler dump.
 
 1. <+67>: Avanza 4 bytes en el stack y guarda el buffer leido (primer argumento de `int scanf(const char *restrict format, ...)`).
 2. <+71>: Guarda en los alto del stack el segundo argumeto de la función `scanf()` almacenado en EAX (`"%d"`).
-3. <+74>: Llama a la finción `scanf()`: `int scanf(const char *buffer, "%d");` y transforma el string del buffer en un número entero.
+3. <+74>: Llama a la finción `scanf()`: `__isoc99_scanf("%d", &input);` y transforma el string del buffer en un número entero.
 
 ### **Líneas 79, 83 y 88:**
 ```asm

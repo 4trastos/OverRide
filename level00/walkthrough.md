@@ -104,7 +104,7 @@ level00@OverRide:~$ readelf -S ./level00 | grep -E ".got|.plt"
 | **ASLR** | **OFF** | `0` | El Heap y el Stack no se mueven; las direcciones son fijas. |
 | **NX** | **ON** | `RW` | El Heap  y el Stack NO permiten ejecución. NO podemos meter y correr Shellcode allí. |
 | **RELRO** | **PARTIAL** | `R` | La sección `.got.plt` sigue siendo escribible `(WA)`. Podríamos hacer un `GOT Hijack` si fuera necesario. |
-| **CANARY** | **NO**  | `No canary found` | No hay "centinela" al final del stack. Podemos desbordar el RIP sin que el programa lo detecte. |
+| **CANARY** | **NO**  | `No canary found` | No hay "centinela" al final del stack. Podemos desbordar el EIP sin que el programa lo detecte. |
 | **.got.plt** | **WA**  | `WA` | Confirma sección `.got.plt` en escritura |
 
 ---

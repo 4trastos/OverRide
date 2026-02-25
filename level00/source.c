@@ -5,12 +5,23 @@
 
 int main(void)
 {
-    char *buffer;
+    int input;                      // Esta es la variable en [esp+0x1c]
+
+    puts("***********************************");
+    puts("* 	       -Level00 -		    *");
+    puts("***********************************");
+    printf("Password:");
+
+    if (__isoc99_scanf("%d", &input) != 1)
+        puts("\nInvalid Password!");
     
-    while (strc)
+    if (input == 5276)              // <+83>:	cmp    eax,0x149c
     {
-        /* code */
+        puts("\nAuthenticated!");
+        system("/bin/sh");
     }
+    else
+        puts("\nInvalid Password!");
     
     return(0);
 }
