@@ -21,7 +21,7 @@ lrwxrwxrwx  1 root    root       7 Sep 13  2016 .bash_profile -> .bashrc
 # 2. Analizamos las protecciones de la RAM
 ```bash
 RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      FILE
-Partial RELRO   No canary found   NX enabled    No PIE          No RPATH   No RUNPATH   /home/
+Partial RELRO   No canary found   NX enabled    No PIE          No RPATH   No RUNPATH   /home/users/level01/level00
 ```
 
 ### a). PIE:
