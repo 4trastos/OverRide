@@ -79,7 +79,7 @@ End of assembler dump.
 4. <+4>: Guarda en el stack `[esp + 0x08]` el valor de EBX y desplaza de nuevo 4 bytes hacia abajo el ESP.
 5. <+5>: Alinea el stack a múltiplo de 16 (los últimos 4 bytes se ponene a 0).
 6. <+8>: Desplaza (Reserva) 96 bytes (0x60) en el stack de `main()` para que el compilador organice las variables locales y los arguemntos de las funciones que `main()` va a llamar.
-7. <+11>: `lea` (Load Effective Address). Calcula la dirección de la variable local `(buffer)` en el stack `[esp+0x1c]` y la copia en EBX que es donde después escribiremos el password.
+7. <+11>: `lea` (Load Effective Address). Calcula la dirección de la variable global `FILE *file` en el stack `[esp+0x1c]` y la copia en EBX que es donde después escribiremos el password.
 
 ### **Líneas 15, 20, 25, 27 y 29: (memset())**
 ```asm
@@ -98,7 +98,7 @@ End of assembler dump.
 - `stos` -> Store String. Copia el valor de EAX (que es 0) en la dirección apuntada por EDI.
 - Como es `DWORD` escribe 4 bytes  cada vez
 - Como EXC es 16, lo hace 16 veces.
-**Resultado**: Está poniendo a cero un bloque de 64 bytes (16×4 = 64). Es el equivalente en C a un `memset(buffer, 0, 64);`.
+**Resultado**: Está poniendo a cero un bloque de 64 bytes (16×4 = 64). Es el equivalente en C a un `memset(file, 0, 64);`.
 
 ### **Líneas 31, 39, 46, 51, 56 y 59: (Printea la cabecera)**
 ```asm
@@ -154,30 +154,30 @@ End of assembler dump.
 
 ```asm
 Dump of assembler code for function verify_user_name:
-   0x08048464 <+0>:	    push   ebp
-   0x08048465 <+1>:	    mov    ebp,esp
-   0x08048467 <+3>:	    push   edi
-   0x08048468 <+4>:	    push   esi
-   0x08048469 <+5>:	    sub    esp,0x10
+   0x08048464 <+0>:	   push   ebp
+   0x08048465 <+1>:	   mov    ebp,esp
+   0x08048467 <+3>:	   push   edi
+   0x08048468 <+4>:	   push   esi
+   0x08048469 <+5>:	   sub    esp,0x10
    0x0804846c <+8>:     mov    DWORD PTR [esp],0x8048690
-   0x08048473 <+15>:	call   0x8048380 <puts@plt>
-   0x08048478 <+20>:	mov    edx,0x804a040
-   0x0804847d <+25>:	mov    eax,0x80486a8
-   0x08048482 <+30>:	mov    ecx,0x7
-   0x08048487 <+35>:	mov    esi,edx
-   0x08048489 <+37>:	mov    edi,eax
-   0x0804848b <+39>:	repz cmps BYTE PTR ds:[esi],BYTE PTR es:[edi]
-   0x0804848d <+41>:	seta   dl
-   0x08048490 <+44>:	setb   al
-   0x08048493 <+47>:	mov    ecx,edx
-   0x08048495 <+49>:	sub    cl,al
-   0x08048497 <+51>:	mov    eax,ecx
-   0x08048499 <+53>:	movsx  eax,al
-   0x0804849c <+56>:	add    esp,0x10
-   0x0804849f <+59>:	pop    esi
-   0x080484a0 <+60>:	pop    edi
-   0x080484a1 <+61>:	pop    ebp
-   0x080484a2 <+62>:	ret    
+   0x08048473 <+15>:    call   0x8048380 <puts@plt>
+   0x08048478 <+20>:	   mov    edx,0x804a040
+   0x0804847d <+25>:	   mov    eax,0x80486a8
+   0x08048482 <+30>: 	mov    ecx,0x7
+   0x08048487 <+35>:	   mov    esi,edx
+   0x08048489 <+37>:	   mov    edi,eax
+   0x0804848b <+39>:	   repz cmps BYTE PTR ds:[esi],BYTE PTR es:[edi]
+   0x0804848d <+41>:	   seta   dl
+   0x08048490 <+44>:	   setb   al
+   0x08048493 <+47>:	   mov    ecx,edx
+   0x08048495 <+49>:	   sub    cl,al
+   0x08048497 <+51>:	   mov    eax,ecx
+   0x08048499 <+53>:	   movsx  eax,al
+   0x0804849c <+56>:	   add    esp,0x10
+   0x0804849f <+59>:	   pop    esi
+   0x080484a0 <+60>:	   pop    edi
+   0x080484a1 <+61>:	   pop    ebp
+   0x080484a2 <+62>:	   ret    
 End of assembler dump.
 ```
 ### **Líneas 0, 1, 3, 4, 5, 8 y 15:**
@@ -187,8 +187,8 @@ End of assembler dump.
 0x08048467 <+3>:	 push   edi
 0x08048468 <+4>:	 push   esi
 0x08048469 <+5>:	 sub    esp,0x10
-0x0804846c <+8>:     mov    DWORD PTR [esp],0x8048690
-0x08048473 <+15>:	call   0x8048380 <puts@plt>
+0x0804846c <+8>:   mov    DWORD PTR [esp],0x8048690
+0x08048473 <+15>:  call   0x8048380 <puts@plt>
 ```
 
 1. <+0>: Guarda en el stack `[esp+0x00]` el valor de EBP `(main())` y ESP se desplaza 4 bytes hacia abajo.
@@ -288,4 +288,109 @@ End of assembler dump.
 0x0804855c <+140>:	mov    eax,ds:0x804a020
 ```
 
-1. 
+1. <+128>: Guarda en lo alto del stack la dirección `0x804870d` que contiene el string ` "Enter Password: "`:
+```bash
+(gdb) x/s 0x804870d
+0x804870d:	 "Enter Password: "
+```
+2. <+135>: Llama a la función `puts()` y printea: `"Enter Password: "`
+3. <+140>: `ds` (segmento de datos). Valor de una variable global es este caso: `FILE *file` de la función `stdin()`:
+```bash
+(gdb) x/s 0x804a020
+0x804a020 <stdin@@GLIBC_2.0>:	 ""
+```
+
+### **Líneas 145, 149, 157, 161, 164, 169, 173 y 176:**
+```asm
+0x08048561 <+145>:	mov    DWORD PTR [esp+0x8],eax
+0x08048565 <+149>:	mov    DWORD PTR [esp+0x4],0x64
+0x0804856d <+157>:	lea    eax,[esp+0x1c]
+0x08048571 <+161>:	mov    DWORD PTR [esp],eax
+0x08048574 <+164>:	call   0x8048370 <fgets@plt>
+0x08048579 <+169>:	lea    eax,[esp+0x1c]
+0x0804857d <+173>:	mov    DWORD PTR [esp],eax
+0x08048580 <+176>:	call   0x80484a3 <verify_user_pass>
+```
+
+1. <+145>: Guarda en el stack en `[esp+0x8]` como primer arguento de `fgets()`. Lo leido por `stdin()`.
+2. <+149>: Guarda en el stacj en `[esp+0x4]` como segundo algumento el número 100 (0x64)
+3. <+157>: Recupera en EAX la dirección de la varible global `a_user_name`.
+4. <+161>: Guarda EAX en lo alto del stack como tercer argumento.
+5. <+164>: Llama a la función `fgets()`: `fgets(a_user_name, 100, file)`
+6. <+169>: Recupera en EAX el puntero del buffer
+7. <+173>: Lo guarda en lo alto del stack y lo pasa como argumento a la siguiente función.
+8. <+176>: Llama a la función : `<verify_user_pass>`
+
+## ANÁLISIS DE LA FUCIÓN `<verify_user_pass>`:
+
+```asm
+Dump of assembler code for function verify_user_pass:
+   0x080484a3 <+0>:	push   ebp
+   0x080484a4 <+1>:	mov    ebp,esp
+   0x080484a6 <+3>:	push   edi
+   0x080484a7 <+4>:	push   esi
+   0x080484a8 <+5>:	mov    eax,DWORD PTR [ebp+0x8]
+   0x080484ab <+8>:	mov    edx,eax
+   0x080484ad <+10>:	mov    eax,0x80486b0
+   0x080484b2 <+15>:	mov    ecx,0x5
+   0x080484b7 <+20>:	mov    esi,edx
+   0x080484b9 <+22>:	mov    edi,eax
+   0x080484bb <+24>:	repz cmps BYTE PTR ds:[esi],BYTE PTR es:[edi]
+   0x080484bd <+26>:	seta   dl
+   0x080484c0 <+29>:	setb   al
+   0x080484c3 <+32>:	mov    ecx,edx
+   0x080484c5 <+34>:	sub    cl,al
+   0x080484c7 <+36>:	mov    eax,ecx
+   0x080484c9 <+38>:	movsx  eax,al
+   0x080484cc <+41>:	pop    esi
+   0x080484cd <+42>:	pop    edi
+   0x080484ce <+43>:	pop    ebp
+   0x080484cf <+44>:	ret    
+End of assembler dump.
+```
+
+### **Líneas 0, 1, 3, 4 y 5:**
+```asm
+0x080484a3 <+0>:	push   ebp
+0x080484a4 <+1>:	mov    ebp,esp
+0x080484a6 <+3>:	push   edi
+0x080484a7 <+4>:	push   esi
+0x080484a8 <+5>:	mov    eax,DWORD PTR [ebp+0x8]
+```
+
+1. <+0>: Guarda en el stack `[esp+0x00]` el valor de EBP `(main())` y ESP se desplaza 4 bytes hacia abajo.
+2. <+1>: Copia el nuevo ESP en EBP para la función `verify_user_name()`.
+3. <+3>: Guarda en el stack `[esp+0x04]` la dirección de EDI para usarlo más adelante y desplaza hacia abajo 4 bytes ESP.
+4. <+4>: Guarda en el stack `[esp+0x08]` la dirección de ESI para usalo más adelante y desplaza ESP hacia abajo 4 bytes más.
+5. <+5>: Carga en EAX el argumento recibido `[ebp+0x8]` -> String con el password
+
+### **Líneas 8, 10, 15, 20, 22 y 24: Compara el password**
+```asm
+0x080484ab <+8>:	mov    edx,eax
+0x080484ad <+10>:	mov    eax,0x80486b0
+0x080484b2 <+15>:	mov    ecx,0x5
+0x080484b7 <+20>:	mov    esi,edx
+0x080484b9 <+22>:	mov    edi,eax
+0x080484bb <+24>:	repz cmps BYTE PTR ds:[esi],BYTE PTR es:[edi]
+```
+
+1. <+8>: Copia el password escrito por el terminal y lo guarda en EDX. Primer argumento de `strncmp()`.
+2. <+10>: Carga en EAX el valor de la dirección `0x80486b0` que contiene un string con la palabra: `"admin"`:
+```bash
+(gdb) x/s 0x80486b0
+0x80486b0:	 "admin"
+```
+3. <+15>: Guarda el número 5 en ECX (longitud) y primer argumento de `strncmp()`.
+4. <+20>: Copia en ESI el registro EDX y segundo argumento de `strncmp()`.
+5. <+22>: Copia en EDI el registro EAX (`"admin"`) y tercer argumtno de `strncmp()`.
+6. <+24>: Compara las dos strings bytes a byte un máximo de 5 bytes. `strncmp("admin", a_user_name, 5)`
+
+### **Líneas:**
+```asm
+0x080484bd <+26>:	seta   dl
+0x080484c0 <+29>:	setb   al
+0x080484c3 <+32>:	mov    ecx,edx
+0x080484c5 <+34>:	sub    cl,al
+0x080484c7 <+36>:	mov    eax,ecx
+0x080484c9 <+38>:	movsx  eax,al
+```
