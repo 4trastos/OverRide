@@ -15,7 +15,7 @@ lrwxrwxrwx  1 root    root       7 Sep 13  2016 .bash_profile -> .bashrc
 -rw-r--r--  1 level01 level01  675 Sep 10  2016 .profile
 ```
 
-> **Nota:** El bit `s` en los permisos indica que es un binairo **SUID**. Se ejecuta con los privilegios del propietario (`level01`).
+> **Nota:** El bit `s` en los permisos indica que es un binairo **SUID**. Se ejecuta con los privilegios del propietario (`level02`).
 
 # 2. Analizamos las protecciones de la RAM
 ```bash
