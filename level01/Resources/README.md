@@ -79,7 +79,7 @@ End of assembler dump.
 4. <+4>: Guarda en el stack `[esp + 0x08]` el valor de EBX y desplaza de nuevo 4 bytes hacia abajo el ESP.
 5. <+5>: Alinea el stack a múltiplo de 16 (los últimos 4 bytes se ponene a 0).
 6. <+8>: Desplaza (Reserva) 96 bytes (0x60) en el stack de `main()` para que el compilador organice las variables locales y los arguemntos de las funciones que `main()` va a llamar.
-7. <+11>: `lea` (Load Effective Address). Calcula la dirección de la variable global `FILE *file` en el stack `[esp+0x1c]` y la copia en EBX que es donde después escribiremos el password.
+7. <+11>: `lea` (Load Effective Address). Es un buffer local en el stack destinado a guardar el password. stack `[esp+0x1c]` y la copia en EBX.
 
 ### **Líneas 15, 20, 25, 27 y 29: (memset())**
 ```asm
@@ -225,7 +225,7 @@ End of assembler dump.
 5. <+37>: Copia el nombre real `"dat_wil"` guardado en EAX como tercer argumento.
 6. <+39>: Compara las dos strings bytes a byte un máximo de 7 bytes. `strncmp("dat_wil", a_user_name, 7)`
 
-### **Líneas 41, 44, 47, 49, 51, 53 y 56:**
+### **Líneas 41, 44, 47, 49, 51, 53 y 56: (Comparador)**
 ```asm
 0x0804848d <+41>:	seta   dl
 0x08048490 <+44>:	setb   al
@@ -244,7 +244,7 @@ End of assembler dump.
 6. <+53>: `movsx` extiende con signo AL a EAX completo para que el valor de retorno sea correcto como entero con signo.
 7. <+56>: Libera los 16 bytes (0x10) que se reservaron para este función en el paso `<+5>`
 
-### **Lineas :**
+### **Lineas 59, 60, 61 y 62:**
 ```asm
 0x0804849f <+59>:	pop    esi
 0x080484a0 <+60>:	pop    edi
@@ -259,7 +259,7 @@ End of assembler dump.
 
 ### **Líneas 98, 102, 107, 109, 116, 121 y 126:**
 ```asm
-0x08048532 <+98>:	mov    DWORD PTR [esp+0x5c],eax
+0x08048532 <+98>:	   mov    DWORD PTR [esp+0x5c],eax
 0x08048536 <+102>:	cmp    DWORD PTR [esp+0x5c],0x0
 0x0804853b <+107>:	je     0x8048550 <main+128>
 0x0804853d <+109>:	mov    DWORD PTR [esp],0x80486f0
@@ -385,7 +385,7 @@ End of assembler dump.
 5. <+22>: Copia en EDI el registro EAX (`"admin"`) y tercer argumtno de `strncmp()`.
 6. <+24>: Compara las dos strings bytes a byte un máximo de 5 bytes. `strncmp("admin", a_user_name, 5)`
 
-### **Líneas:**
+### **Líneas 26, 29, 32, 34, 36 y 38 :(comparador)**
 ```asm
 0x080484bd <+26>:	seta   dl
 0x080484c0 <+29>:	setb   al
@@ -394,3 +394,71 @@ End of assembler dump.
 0x080484c7 <+36>:	mov    eax,ecx
 0x080484c9 <+38>:	movsx  eax,al
 ```
+
+1. <+26>: `seta` -> (Set if Above). Pone a 1 DL si: `a_user_name > admin`. Pone 0 si no es mayor.
+2. <+29>: `setb` -> (Set if Below). Pone a 1 AL  si: `a_user_name < admin`. Pone 0 si no es menor.
+3. <+32>: Copia EDX en ECX
+4. <+34>: Resta AL de CL: `(CL = DL - AL)`. El resultado es el equivalente al valor de retorno de `strncmp()`: *negativo, 0 o positivo*.
+5. <+36>: Carga ECX en EAX. (Donde devuelve el valor de retorno la función.)
+6. <+38>: `movsx` extiende con signo AL a EAX completo para que el valor de retorno sea correcto como entero con signo.
+
+### **Líneas 41, 42, 43 y 44:**
+```asm
+0x080484cc <+41>:	pop    esi
+0x080484cd <+42>:	pop    edi
+0x080484ce <+43>:	pop    ebp
+0x080484cf <+44>:	ret    
+```
+
+1. <+41> a <+43>: Saca del stack los registros (borra)
+2. <+44>: Retorna a `main`
+
+## VOLVEMOS A `main()`:
+
+### **Líneas 181, 185 y 190:**
+```asm
+0x08048585 <+181>:	mov    DWORD PTR [esp+0x5c],eax
+0x08048589 <+185>:	cmp    DWORD PTR [esp+0x5c],0x0
+0x0804858e <+190>:	je     0x8048597 <main+199>
+0x08048590 <+192>:	cmp    DWORD PTR [esp+0x5c],0x0
+0x08048595 <+197>:	je     0x80485aa <main+218>
+0x08048597 <+199>:	mov    DWORD PTR [esp],0x804871e
+0x0804859e <+206>:	call   0x8048380 <puts@plt>
+```
+
+1. <+181>: Copia lo devuelto por `<verify_user_pass>` en la dirección `[esp+0x5c]` del stack
+2. <+185>: Compara ese valor con 0
+3. <+190>: Si es igual salta a la línea <+199> y printea: `nope, incorrect password...`
+```bash
+(gdb) x/s 0x804871e
+0x804871e:	 "nope, incorrect password...\n"
+```
+4. <+192>: Si es diferente a 0 vuelve a comparar con 0.
+5. <+197>: Si es igual a 0 salta a la línea <+218> y sale del programa
+6. <+206>: Llama a `puts()` y printea: `nope, incorrect password...`
+
+### **Líneas :**
+```asm
+0x080485aa <+218>:	mov    eax,0x0
+0x080485af <+223>:	lea    esp,[ebp-0x8]
+0x080485b2 <+226>:	pop    ebx
+0x080485b3 <+227>:	pop    edi
+0x080485b4 <+228>:	pop    ebp
+0x080485b5 <+229>:	ret    
+```
+
+1. <+218>: Pone a 0 el registro EAX
+2. <+226> al <+229>: Borra del stack los registos y el programa sale.
+
+### **Resumen del Flujo de Ataque para el Nivel 01**
+
+1. **Lectura:** En la vulnerabilidad de main `(Línea +164)` es donde está el fallo de seguridad.
+
+2. **Vulnerabilidad:** En la `línea <+8>` el programa reserva 96 bytes (0x60) de espacio en el stack.
+
+* El `buffer` del password empieza en [esp+0x1c].
+* El `fgets` de la línea <+164> lee 100 bytes (0x64).
+
+3. **Explitación:**
+* **Paso 1:** Si calculamos96 − 28 `(que es 0x1c) = 68 bytes` de espacio real hasta el final del frame.
+* **Paso 2:** Al leer 100 bytes, desbordas el stack por 32 bytes. Suficiente para pisar el EIP (la dirección de retorno).

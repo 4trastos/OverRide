@@ -110,3 +110,86 @@ level01@OverRide:~$ readelf -S ./level01 | grep -E ".got|.plt"
 
 # 4. Fuzzing:
 
+Al ejecutar el binairo nos pide un usuario y depués la contraseña. Si concer la contaseña probamos si somos capaces de generar un `segfault`, algo que solo logramos realizar cuando concemos el nombre del usuario. 
+
+El nombre del usuairo lo encontramos desensamblando el bianrio: `"dat_wil"`.
+
+```bash
+level01@OverRide:~$ ./level01 
+********* ADMIN LOGIN PROMPT *********
+Enter Username: asdas
+verifying username....
+
+nope, incorrect username...
+
+level01@OverRide:~$ ./level01 
+********* ADMIN LOGIN PROMPT *********
+Enter Username: dat_wil
+verifying username....
+
+Enter Password: 
+asdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+nope, incorrect password...
+
+Segmentation fault (core dumped)
+```
+
+Esto nos hace pensar que esta vez si que podremos usar la técnica de `Stack BUffer Overflow` desbordando el buffer.
+
+---
+
+# 5. Reverse Engineering (Target Identification):
+
+1. Desensamblamos `main` y las dos funciones que testean el `nombre de usuario` y `password`.
+```asm
+0x0804852d <+93>:	call   0x8048464 <verify_user_name>
+0x08048580 <+176>:	call   0x80484a3 <verify_user_pass>
+```
+
+2. Encontramos el nombre de usuario en `<verify_user_name>`:
+```bash
+(gdb) x/s 0x80486a8
+0x80486a8:	 "dat_wil"
+```
+
+3. Encontramos la **vulnerabilidad** de main en la `Línea <+164>`:
+```asm
+0x08048574 <+164>:	call   0x8048370 <fgets@plt>
+``` 
+- Aunque usa la función `fgets()` controla el tamaño del string a leer, lee más bytes de los que hay reservados en el buffer.
+- En la línea `<+8>` el programa reserva `96 bytes (0x60)` de espacio en el stack.
+- El `buffer` del password empieza en [esp+0x1c].
+- El fgets de la línea <+164> lee `100 bytes (0x64)`.
+
+4. Por lo tanto, si calculamos `96 − 28 (que es 0x1c) = 68 bytes` de espacio real hasta el final del frame. Al leer 100 bytes, desbordamos el stack por 32 bytes. Suficiente para pisar el EIP (la dirección de retorno).
+
+5. Buscamos `system()` en el binario usando `nm` y no lo encontamos.
+
+6. Tenemos el `NX está activado` no podmeos ejecutar código en el stack. Tenemos que saltar a la librería de `C (libc)` que ya está cargada en memoria.
+
+Para ver con detalle el analisis consuta el archivo  [asm_analysis.md](https://github.com/4trastos/OverRide/blob/main/level01/Resources/README.md) en conjunto con el programa de demostración  [source.c](https://github.com/4trastos/OverRide/blob/main/level01/source.c).
+
+---
+
+# 6. Solución:
+
+Para resolver este nivel, necesitamos construir un exploit de **Ret2Libc**. 
+
+Cuando la función `main` termine (en el `ret` de la línea `<+229>`), el programa no vuelva al sistema, sino que salte a `system()` dentro de la `libc`.
+
+Necesitamos tres direcciones:
+
+1. **Dirección de `system()**` en la Libc.
+2. **Dirección de una "salida"** (como `exit()`) para que no crashee.
+3. **Dirección de la cadena `"/bin/sh"**` (que también está dentro de la Libc).
+
+**¿Cómo las encontramos?**
+```bash
+(gdb) p system
+(gdb) find &system, +9999999, "/bin/sh"
+
+```
+
+---
+
+### **Ejecución:**
