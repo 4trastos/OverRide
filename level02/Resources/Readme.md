@@ -201,7 +201,11 @@ memset(buffer_username, 0, 12);
 0x000000000040085d <+73>:	rep stos QWORD PTR es:[rdi],rax
 ```
 
-1. <+44>: Copia el buffer `buffer_username` que ya está a 0 (rdi) en RDX
-2. <+47>: Añade EAX al inicio de RDX
-3. <+49>: Añade 4 bytes al registro RDX (96 + 4 bytes = 100 bytes)
-4. <+53>: Calcula la dirección de `[rbp-0xa0]` que es la varibale local de `buffer_password` y la carga en RDX. ¿¿¿¿concatena?????
+1. <+44>: Copia en RDX la dirección final donde se quedó el puntero RDI tras el `rep stos` anterior.
+2. <+47>: Escribe el valor de EAX (que es 0) en los siguientes 4 bytes (DWORD) de la memoria apuntada por RDX.
+3. <+49>: Suma 4 bytes al registro RDX para alinear el registro de memoria (96 + 4 bytes = 100 bytes)
+4. <+53>: Calcula la dirección de `[rbp-0xa0]` que es la varibale local de `buffer_password` y la carga en RDX.
+5. <+60>: Asegura que EAX (RAX) sean 0.
+6. <+65>: Carga en número 5 en el contador ECX
+7. <+70>: Copia la dirección del nuevo buffer `buffer_password` en RDI.
+8. <+73>: 
