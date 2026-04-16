@@ -678,3 +678,58 @@ puts(" does not have access!");
 ```
 7. <+669>: Carga el valor `1` en `EDI` — el código de salida que recibirá `exit()`.
 8. <+674>: Llama a `exit@plt` y termina el programa.
+
+---
+
+# Resumen del Flujo de Ataque para el Nivel 02
+
+## 1. Lectura:
+
+La vulnerabilidad está en la línea `<+654>` de `main`:
+
+```asm
+0x0000000000400aa2 <+654>: call   0x4006c0 <printf@plt>
+```
+
+```c
+printf(buffer_username);
+```
+
+`printf` recibe `buffer_username` directamente como formato sin sanitizar.
+
+---
+
+## 2. Vulnerabilidad:
+
+* `buffer_file` se inicializa en `[rbp-0xa0]` con `fread()` — contiene el password
+  leído del archivo `.pass` de `level03`.
+* `buffer_username` se inicializa en `[rbp-0x70]` con `fgets()` — contiene la entrada
+  del usuario.
+* El `printf` de la línea `<+654>` usa `buffer_username` directamente como formato,
+  sin especificador — permite leer valores arbitrarios del stack con `%p`.
+
+---
+
+## 3. Explotación:
+
+* **Paso 1:** Confirmamos la vulnerabilidad introduciendo `%p` como username — `printf`
+  vuelca valores del stack en lugar de imprimirlos literalmente.
+* **Paso 2:** Ampliamos el número de `%p` hasta localizar `buffer_file` en el stack.
+  Al ser un binario de **64 bits**, cada `%p` vuelca **8 bytes** en little-endian.
+* **Paso 3:** `buffer_file` aparece a partir de la posición **22** del stack.
+  Con 26 especificadores `%p` obtenemos los 40 bytes del password completo.
+* **Paso 4:** Convertimos los valores hexadecimales volcados a ASCII con **CyberChef**
+  (From Hex + Reverse) para reconstruir el password.
+
+```bash
+level02@OverRide:~$ ./level02
+--[ Username: %p.%p.%p.%p ... (x26)
+--[ Password: a
+*****************************************
+... 0x756e505234376848.0x45414a3561733951.0x377a7143574e6758.
+0x354a35686e475873.0x48336750664b394d does not have access!
+```
+
+Password obtenido: `Hh74RPnuQ9sa5JAEXgNWCqz7sXGnh5J5M9KfPg3H`
+
+---
