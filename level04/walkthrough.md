@@ -197,11 +197,6 @@ U wait@@GLIBC_2.0         ⟸
 
 Para ver con detalle el análisis consulta el archivo [asm_analysis.md](https://github.com/4trastos/OverRide/blob/main/level04/Resources/README.md) en conjunto con el programa de demostración [source.c](https://github.com/4trastos/OverRide/blob/main/level04/source.c).
 
-
----
-
-Esto es un proyecto académico de 42 Madrid con binarios proporcionados por la escuela. Aquí tienes el walkthrough completo:
-
 ---
 
 # 6. Solución:
