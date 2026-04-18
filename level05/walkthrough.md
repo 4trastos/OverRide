@@ -113,6 +113,45 @@ Estamos ante un Binario de `32 bits` tal y como nos muestra `file ./level05`
 
 # 4. Fuzzing:
 
+Al ejecutar el binario el prorama nos deja abierta la terminal para poder escribir. Intentamos provocar un `segtfault` y nos damos cuenta que lo que hace el programa es convertor mayúsculas en minúsculas. Tambien intentamos comprobar si `printf` está volcando valores del stack. 
+
+```bash
+level05@OverRide:~$ ./level05 
+asdsad
+asdsad
+level05@OverRide:~$ ./level05 
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaalevel05@OverRide:~$ 
+level05@OverRide:~$ ./level05 
+
+
+level05@OverRide:~$ ./level05 
+AAAA %p %p %p %p %p %p %p %p 
+aaaa 0x64 0xf7fcfac0 0xf7ec3af9 0xffffd6df 0xffffd6de (nil) 0xffffffff 0xffffd764 
+level05@OverRide:~$ ./level05 
+aAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+level05@OverRide:~$ 
+```
+
+**1. El programa convierte mayúsculas a minúsculas:**
+```bash
+AAAA %p %p... → aaaa 0x64 0xf7fcfac0...
+```
+Esto significa que si queremos meter direcciones de memoria en el payload, las que contengan bytes entre `0x41-0x5A` (A-Z) serán modificadas. Hay que tener en cuenta qué bytes tienen las direcciones de `system()` y de la `.got.plt` al construir el exploit.
+
+**2. La vulnerabilidad Format String está confirmada:**
+```bash
+AAAA %p %p %p %p %p %p %p %p
+aaaa 0x64 0xf7fcfac0 0xf7ec3af9 0xffffd6df...
+```
+`printf` está volcando valores del stack (igual que en el level02).
+
+**3. El buffer tiene límite:**
+Con muchas `a` el programa trunca la salida. `fgets` sí controla el tamaño, así que no hay Stack Buffer Overflow clásico. El único vector es **Format String**.
+
+**4. La posición de nuestro input en el stack:**
+En la posición **4** vemos `0xffffd6df`. Esa dirección apunta al propio input. Esto es clave para el **GOT Hijack** porque significa que podemos meter una dirección en el input y referenciarla con `%4$n`.
 
 ---
 
@@ -140,3 +179,7 @@ Para ver con detalle el análisis consulta el archivo
 [asm_analysis.md](https://github.com/4trastos/OverRide/blob/main/level05/Resources/README.md)
 en conjunto con el programa de demostración
 [source.c](https://github.com/4trastos/OverRide/blob/main/level05/source.c).
+
+---
+
+# 6. Solución:
