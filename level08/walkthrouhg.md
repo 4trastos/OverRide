@@ -1,6 +1,6 @@
 # 1. Buscar Binario:
 
-Listamos los archivos para que muestre el biarnio del `level06` y sus permisos:
+Listamos los archivos para que muestre el biarnio del `level08` y sus permisos:
 
 ```bash
 level08@OverRide:~$ ls -la
